@@ -42,7 +42,7 @@ app.get("/cards", async (req, res) => {
     res.status(500).send("エラー");
   }
 });
-
+console.log(req.body);
 // ===== 追加（POST）=====
 app.post("/cards", async (req, res) => {
   try {
@@ -63,28 +63,43 @@ app.post("/cards", async (req, res) => {
   },
   properties: {
     見出し語: {
-      title: [{ text: { content: front } }],
+      title: [{ text: { content: front || "" } }],
     },
+
     意味: {
-      rich_text: [{ text: { content: meaning } }],
+      rich_text: [{ text: { content: meaning || "" } }],
     },
+
     備考: {
-      rich_text: [{ text: { content: note } }],
+      rich_text: [{ text: { content: note || "" } }],
     },
-    性質: {
-      rich_text: [{ text: { content: type } }],
-    },
-    関連語: {
-      rich_text: [{ text: { content: related } }],
-    },
-    ジャンル: {
-      rich_text: [{ text: { content: genre } }],
-    },
-    参考文系: {
-      rich_text: [{ text: { content: source } }],
-    },
+
     読みがな: {
-      rich_text: [{ text: { content: reading } }],
+      rich_text: [{ text: { content: reading || "" } }],
+    },
+
+    性質: {
+      multi_select: (type || "")
+        .split(",")
+        .filter(Boolean)
+        .map((v) => ({ name: v.trim() })),
+    },
+
+    ジャンル: {
+      multi_select: (genre || "")
+        .split(",")
+        .filter(Boolean)
+        .map((v) => ({ name: v.trim() })),
+    },
+
+    関連語: {
+      rich_text: [
+        { text: { content: related || "" } }
+      ],
+    },
+
+    参考文献: {
+      url: source || "",
     },
   },
 });
