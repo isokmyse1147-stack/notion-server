@@ -3,19 +3,19 @@ const cors = require("cors");
 const { Client } = require("@notionhq/client");
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// Notion
+app.use(cors());
+app.use(express.json()); // ←これ必須（POST受け取り）
+
 const notion = new Client({
-  auth: "YOUR_NOTION_SECRET" // ←本番は.envにするの推奨
+  auth: "YOUR_NOTION_SECRET"
 });
 
 const DATABASE_ID = "44b17a9dc869834397f4817b7190d4f4";
 
 
 // =======================
-// GET（カード取得）
+// GET
 // =======================
 app.get("/cards", async (req, res) => {
   try {
@@ -44,19 +44,22 @@ app.get("/cards", async (req, res) => {
     });
 
     res.json(cards);
+
   } catch (err) {
     console.error(err);
-    res.status(500).send("取得エラー");
+    res.status(500).send("GETエラー");
   }
 });
 
 
 // =======================
-// POST（カード追加）
+// POST（ここが本体）
 // =======================
 app.post("/cards", async (req, res) => {
   try {
-    console.log(req.body); // デバッグ用
+
+    // 🔥 ここが重要（必ず中に書く）
+    console.log("受信データ:", req.body);
 
     const {
       front,
@@ -67,7 +70,7 @@ app.post("/cards", async (req, res) => {
       genre,
       source,
       reading
-    } = req.body;
+    } = req.body || {}; // ←保険（undefined対策）
 
     await notion.pages.create({
       parent: {
@@ -105,13 +108,11 @@ app.post("/cards", async (req, res) => {
         },
 
         関連語: {
-          rich_text: [
-            { text: { content: related || "" } }
-          ],
+          rich_text: [{ text: { content: related || "" } }]
         },
 
         参考文献: {
-          url: source || ""
+          url: source && source.startsWith("http") ? source : null
         }
       },
     });
@@ -119,13 +120,9 @@ app.post("/cards", async (req, res) => {
     res.json({ message: "追加成功" });
 
   } catch (err) {
-    console.error(err);
+    console.error("POSTエラー:", err);
     res.status(500).send("追加失敗");
   }
 });
 
-
-// =======================
-// 起動
-// =======================
 app.listen(3000, () => console.log("server起動"));
