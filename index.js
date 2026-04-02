@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json()); // ←これ必須（POST受け取り）
 
 const notion = new Client({
-  auth: "YOUR_NOTION_SECRET"
+  auth: "ntn_h6352128105pElkNRlD9TmZUHhsyZRjld3IPozAxj879CT"
 });
 
 const DATABASE_ID = "44b17a9dc869834397f4817b7190d4f4";
