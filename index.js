@@ -28,24 +28,14 @@ app.get("/cards", async (req, res) => {
       return {
         front: props["見出し語"]?.title?.[0]?.plain_text || "",
         meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
-        note: props["備考"]?.rich_text?.[0]?.plain_text || "",
-        reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
-
-        type:
-          props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
-        genre:
-          props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
-
         related:
           props["関連語"]?.relation?.map((r) => r.id).join(",") || "",
-
-        source: props["参考文献"]?.url || "",
       };
     });
 
     res.json(cards);
   } catch (err) {
-    console.error(err);
+    console.error("GETエラー:", err);
     res.status(500).send("GETエラー");
   }
 });
@@ -57,20 +47,8 @@ app.post("/cards", async (req, res) => {
   try {
     console.log("受信データ:", req.body);
 
-    const {
-      front,
-      meaning,
-      note,
-      type,
-      related,
-      genre,
-      source,
-      reading,
-    } = req.body || {};
+    const { front, meaning, related } = req.body;
 
-    // =========================
-    // 🔥 関連語 → relation変換
-    // =========================
     let relatedRelation = [];
 
     if (related && related.trim() !== "") {
@@ -86,58 +64,22 @@ app.post("/cards", async (req, res) => {
 
       if (searchRes.results.length > 0) {
         relatedRelation = [
-          {
-            id: searchRes.results[0].id,
-          },
+          { id: searchRes.results[0].id },
         ];
       } else {
-        console.log("関連語が見つからない:", related);
+        console.log("関連語見つからない:", related);
       }
     }
 
-    // =========================
-    // Notionに追加
-    // =========================
     await notion.pages.create({
-      parent: {
-        database_id: DATABASE_ID,
-      },
+      parent: { database_id: DATABASE_ID },
       properties: {
         見出し語: {
           title: [{ text: { content: front || "" } }],
         },
-
         意味: {
           rich_text: [{ text: { content: meaning || "" } }],
         },
-
-        備考: {
-          rich_text: [{ text: { content: note || "" } }],
-        },
-
-        読みがな: {
-          rich_text: [{ text: { content: reading || "" } }],
-        },
-
-        性質: {
-          multi_select: (type || "")
-            .split(",")
-            .filter(Boolean)
-            .map((v) => ({ name: v.trim() })),
-        },
-
-        ジャンル: {
-          multi_select: (genre || "")
-            .split(",")
-            .filter(Boolean)
-            .map((v) => ({ name: v.trim() })),
-        },
-
-        参考文献: {
-          url: source && source.startsWith("http") ? source : null,
-        },
-
-        // ⭐ ここがリレーション
         関連語: {
           relation: relatedRelation,
         },
@@ -145,6 +87,7 @@ app.post("/cards", async (req, res) => {
     });
 
     res.json({ message: "追加成功" });
+
   } catch (err) {
     console.error("POSTエラー:", err);
     res.status(500).send("追加失敗");
