@@ -78,34 +78,56 @@ app.post("/add", async (req, res) => {
   try {
     const body = req.body;
 
+    console.log("受信データ:", body);
+
     await notion.pages.create({
       parent: { database_id: DATABASE_ID },
       properties: {
+        // ===== 必須（既存OK）=====
         見出し語: {
           title: [{ text: { content: body.front || "" } }],
         },
+
         意味: {
           rich_text: [{ text: { content: body.meaning || "" } }],
         },
+
+        参考文献: {
+          url: body.source || null,
+        },
+
+        ジャンル: {
+          multi_select: (body.genre || "")
+            .split(",")
+            .filter(Boolean)
+            .map(v => ({ name: v.trim() })),
+        },
+
+        // ===== ⭐ここから追加修正 =====
+
         備考: {
           rich_text: [{ text: { content: body.note || "" } }],
         },
-        読みがな: {
-          rich_text: [{ text: { content: body.reading || "" } }],
-        },
-        ジャンル: {
-          multi_select: (body.genre || "").split(",").filter(Boolean).map(v => ({ name: v })),
-        },
+
         性質: {
-          multi_select: (body.type || "").split(",").filter(Boolean).map(v => ({ name: v })),
+          multi_select: (body.nature || "")
+            .split(",")
+            .filter(Boolean)
+            .map(v => ({ name: v.trim() })),
         },
-        参考文献: {
-          url: body.source || null,
+
+        関連語: {
+          rich_text: [{ text: { content: body.related || "" } }],
+        },
+
+        読みがな: {
+          rich_text: [{ text: { content: body.yomigana || "" } }],
         },
       },
     });
 
     res.json({ message: "追加成功" });
+
   } catch (err) {
     console.error("POSTエラー:", err);
     res.status(500).json({ error: "追加失敗" });
