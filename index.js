@@ -45,29 +45,30 @@ app.get("/cards", async (req, res) => {
         }
 
         return {
-  id: page.id,
-  notionUrl: page.url,
+          id: page.id,
+          notionUrl: page.url, // 🔥重要
 
-  front: props["見出し語"]?.title?.[0]?.plain_text || "",
-  meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
-  note: props["備考"]?.rich_text?.[0]?.plain_text || "",
-  reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
+          front: props["見出し語"]?.title?.[0]?.plain_text || "",
+          meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
+          note: props["備考"]?.rich_text?.[0]?.plain_text || "",
+          reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
 
-  type:
-    props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
-  genre:
-    props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
+          type:
+            props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
+          genre:
+            props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
 
-  related: relatedWords,
-  source: props["参考文献"]?.url || "",
-};
+          related: relatedWords,
+
+          source: props["参考文献"]?.url || "",
+        };
       })
     );
 
-    res.json(cards);
+    res.json(cards); // ✅OK
   } catch (err) {
     console.error("GETエラー:", err);
-    res.status(500).send("GETエラー");
+    res.status(500).json({ error: "GETエラー" }); // 🔥修正
   }
 });
 
@@ -111,10 +112,10 @@ app.post("/cards", async (req, res) => {
       },
     });
 
-    res.json({ message: "追加成功" });
+    res.json({ message: "追加成功" }); // ✅OK
   } catch (err) {
     console.error("POSTエラー:", err);
-    res.status(500).send("追加失敗");
+    res.status(500).json({ error: "追加失敗" }); // 🔥修正
   }
 });
 
