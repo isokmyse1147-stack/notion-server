@@ -45,23 +45,22 @@ app.get("/cards", async (req, res) => {
         }
 
         return {
-          id: page.id, // 🔥これ重要
-          notionUrl: page.url, // 🔥これも重要
+  id: page.id,
+  notionUrl: page.url,
 
-          front: props["見出し語"]?.title?.[0]?.plain_text || "",
-          meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
-          note: props["備考"]?.rich_text?.[0]?.plain_text || "",
-          reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
+  front: props["見出し語"]?.title?.[0]?.plain_text || "",
+  meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
+  note: props["備考"]?.rich_text?.[0]?.plain_text || "",
+  reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
 
-          type:
-            props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
-          genre:
-            props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
+  type:
+    props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
+  genre:
+    props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
 
-          related: relatedWords,
-
-          source: props["参考文献"]?.url || "",
-        };
+  related: relatedWords,
+  source: props["参考文献"]?.url || "",
+};
       })
     );
 
