@@ -72,7 +72,7 @@ app.get("/cards", async (req, res) => {
 });
 
 // =======================
-// ⭐POST /add（これが不足してた原因）
+// POST /add（完全修正版）
 // =======================
 app.post("/add", async (req, res) => {
   try {
@@ -80,10 +80,29 @@ app.post("/add", async (req, res) => {
 
     console.log("受信データ:", body);
 
+    // ===== 関連語（relation変換）=====
+    let relatedRelation = [];
+
+    if (body.related && body.related.trim() !== "") {
+      const searchRes = await notion.databases.query({
+        database_id: DATABASE_ID,
+        filter: {
+          property: "見出し語",
+          title: {
+            equals: body.related.trim(),
+          },
+        },
+      });
+
+      if (searchRes.results.length > 0) {
+        relatedRelation = [{ id: searchRes.results[0].id }];
+      }
+    }
+
     await notion.pages.create({
       parent: { database_id: DATABASE_ID },
       properties: {
-        // ===== 必須（既存OK）=====
+        // ===== 必須 =====
         見出し語: {
           title: [{ text: { content: body.front || "" } }],
         },
@@ -100,11 +119,10 @@ app.post("/add", async (req, res) => {
           multi_select: (body.genre || "")
             .split(",")
             .filter(Boolean)
-            .map(v => ({ name: v.trim() })),
+            .map((v) => ({ name: v.trim() })),
         },
 
-        // ===== ⭐ここから追加修正 =====
-
+        // ===== 追加修正 =====
         備考: {
           rich_text: [{ text: { content: body.note || "" } }],
         },
@@ -113,15 +131,16 @@ app.post("/add", async (req, res) => {
           multi_select: (body.nature || "")
             .split(",")
             .filter(Boolean)
-            .map(v => ({ name: v.trim() })),
-        },
-
-        関連語: {
-          rich_text: [{ text: { content: body.related || "" } }],
+            .map((v) => ({ name: v.trim() })),
         },
 
         読みがな: {
           rich_text: [{ text: { content: body.yomigana || "" } }],
+        },
+
+        // ⭐ここが修正ポイント（relation）
+        関連語: {
+          relation: relatedRelation,
         },
       },
     });
