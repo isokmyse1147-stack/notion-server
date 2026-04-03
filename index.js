@@ -14,7 +14,7 @@ const notion = new Client({
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
 // =======================
-// GET /cards（そのままOK）
+// GET /cards
 // =======================
 app.get("/cards", async (req, res) => {
   try {
@@ -50,11 +50,15 @@ app.get("/cards", async (req, res) => {
 
           front: props["見出し語"]?.title?.[0]?.plain_text || "",
           meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
+
+          // ⭐備考（表示用）
           note: props["備考"]?.rich_text?.[0]?.plain_text || "",
+
           reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
 
           type:
             props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
+
           genre:
             props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
 
@@ -72,7 +76,7 @@ app.get("/cards", async (req, res) => {
 });
 
 // =======================
-// POST /add（完全修正版）
+// POST /add
 // =======================
 app.post("/add", async (req, res) => {
   try {
@@ -80,7 +84,7 @@ app.post("/add", async (req, res) => {
 
     console.log("受信データ:", body);
 
-    // ===== 関連語（relation変換）=====
+    // ===== 関連語（relation化）=====
     let relatedRelation = [];
 
     if (body.related && body.related.trim() !== "") {
@@ -111,6 +115,15 @@ app.post("/add", async (req, res) => {
           rich_text: [{ text: { content: body.meaning || "" } }],
         },
 
+        // ⭐備考（ここが今回の本体）
+        備考: {
+          rich_text: [{ text: { content: body.note || "" } }],
+        },
+
+        読みがな: {
+          rich_text: [{ text: { content: body.yomigana || "" } }],
+        },
+
         参考文献: {
           url: body.source || null,
         },
@@ -122,11 +135,6 @@ app.post("/add", async (req, res) => {
             .map((v) => ({ name: v.trim() })),
         },
 
-        // ===== 追加修正 =====
-        備考: {
-          rich_text: [{ text: { content: body.note || "" } }],
-        },
-
         性質: {
           multi_select: (body.nature || "")
             .split(",")
@@ -134,11 +142,6 @@ app.post("/add", async (req, res) => {
             .map((v) => ({ name: v.trim() })),
         },
 
-        読みがな: {
-          rich_text: [{ text: { content: body.yomigana || "" } }],
-        },
-
-        // ⭐ここが修正ポイント（relation）
         関連語: {
           relation: relatedRelation,
         },
