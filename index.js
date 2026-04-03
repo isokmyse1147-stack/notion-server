@@ -14,7 +14,7 @@ const notion = new Client({
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
 // =======================
-// GET
+// GET /cards（そのままOK）
 // =======================
 app.get("/cards", async (req, res) => {
   try {
@@ -45,7 +45,7 @@ app.get("/cards", async (req, res) => {
         }
 
         return {
-          id: page.id, // ⭐絶対これ使う
+          id: page.id,
           notionUrl: page.url,
 
           front: props["見出し語"]?.title?.[0]?.plain_text || "",
@@ -59,7 +59,6 @@ app.get("/cards", async (req, res) => {
             props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
 
           related: relatedWords,
-
           source: props["参考文献"]?.url || "",
         };
       })
@@ -73,41 +72,35 @@ app.get("/cards", async (req, res) => {
 });
 
 // =======================
-// POST
+// ⭐POST /add（これが不足してた原因）
 // =======================
-app.post("/cards", async (req, res) => {
+app.post("/add", async (req, res) => {
   try {
-    const { front, meaning, related } = req.body;
-
-    let relatedRelation = [];
-
-    if (related && related.trim() !== "") {
-      const searchRes = await notion.databases.query({
-        database_id: DATABASE_ID,
-        filter: {
-          property: "見出し語",
-          title: {
-            equals: related.trim(),
-          },
-        },
-      });
-
-      if (searchRes.results.length > 0) {
-        relatedRelation = [{ id: searchRes.results[0].id }];
-      }
-    }
+    const body = req.body;
 
     await notion.pages.create({
       parent: { database_id: DATABASE_ID },
       properties: {
         見出し語: {
-          title: [{ text: { content: front || "" } }],
+          title: [{ text: { content: body.front || "" } }],
         },
         意味: {
-          rich_text: [{ text: { content: meaning || "" } }],
+          rich_text: [{ text: { content: body.meaning || "" } }],
         },
-        関連語: {
-          relation: relatedRelation,
+        備考: {
+          rich_text: [{ text: { content: body.note || "" } }],
+        },
+        読みがな: {
+          rich_text: [{ text: { content: body.reading || "" } }],
+        },
+        ジャンル: {
+          multi_select: (body.genre || "").split(",").filter(Boolean).map(v => ({ name: v })),
+        },
+        性質: {
+          multi_select: (body.type || "").split(",").filter(Boolean).map(v => ({ name: v })),
+        },
+        参考文献: {
+          url: body.source || null,
         },
       },
     });
