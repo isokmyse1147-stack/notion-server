@@ -14,7 +14,7 @@ const notion = new Client({
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
 // =======================
-// GET（カード取得）
+// GET
 // =======================
 app.get("/cards", async (req, res) => {
   try {
@@ -22,44 +22,48 @@ app.get("/cards", async (req, res) => {
       database_id: DATABASE_ID,
     });
 
-    // ⭐ ① 全ページをID→タイトル辞書にする
-    const pageMap = {};
-    response.results.forEach((page) => {
-      const title =
-        page.properties["見出し語"]?.title?.[0]?.plain_text || "";
+    const cards = await Promise.all(
+      response.results.map(async (page) => {
+        const props = page.properties;
 
-      pageMap[page.id] = title;
-    });
+        let relatedWords = [];
 
-    // ⭐ ② カード生成
-    const cards = response.results.map((page) => {
-      const props = page.properties;
+        if (props["関連語"]?.relation?.length > 0) {
+          for (const rel of props["関連語"].relation) {
+            const relPage = await notion.pages.retrieve({
+              page_id: rel.id,
+            });
 
-      let relatedWords = [];
+            const title =
+              relPage.properties["見出し語"]?.title?.[0]?.plain_text || "";
 
-      if (props["関連語"]?.relation?.length > 0) {
-        relatedWords = props["関連語"].relation.map((rel) => ({
-          id: rel.id,
-          title: pageMap[rel.id] || "???", // ←ここが安定化ポイント
-        }));
-      }
+            relatedWords.push({
+              id: rel.id,
+              title,
+            });
+          }
+        }
 
-      return {
-        front: props["見出し語"]?.title?.[0]?.plain_text || "",
-        meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
-        note: props["備考"]?.rich_text?.[0]?.plain_text || "",
-        reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
+        return {
+          id: page.id, // 🔥これ重要
+          notionUrl: page.url, // 🔥これも重要
 
-        type:
-          props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
-        genre:
-          props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
+          front: props["見出し語"]?.title?.[0]?.plain_text || "",
+          meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
+          note: props["備考"]?.rich_text?.[0]?.plain_text || "",
+          reading: props["読みがな"]?.rich_text?.[0]?.plain_text || "",
 
-        related: relatedWords,
+          type:
+            props["性質"]?.multi_select?.map((v) => v.name).join(",") || "",
+          genre:
+            props["ジャンル"]?.multi_select?.map((v) => v.name).join(",") || "",
 
-        source: props["参考文献"]?.url || "",
-      };
-    });
+          related: relatedWords,
+
+          source: props["参考文献"]?.url || "",
+        };
+      })
+    );
 
     res.json(cards);
   } catch (err) {
@@ -69,22 +73,11 @@ app.get("/cards", async (req, res) => {
 });
 
 // =======================
-// POST（カード追加）
+// POST
 // =======================
 app.post("/cards", async (req, res) => {
   try {
-    console.log("受信データ:", req.body);
-
-    const {
-      front,
-      meaning,
-      note,
-      type,
-      related,
-      genre,
-      source,
-      reading,
-    } = req.body || {};
+    const { front, meaning, related } = req.body;
 
     let relatedRelation = [];
 
@@ -100,64 +93,26 @@ app.post("/cards", async (req, res) => {
       });
 
       if (searchRes.results.length > 0) {
-        relatedRelation = [
-          {
-            id: searchRes.results[0].id,
-          },
-        ];
-      } else {
-        console.log("関連語が見つからない:", related);
+        relatedRelation = [{ id: searchRes.results[0].id }];
       }
     }
 
     await notion.pages.create({
-      parent: {
-        database_id: DATABASE_ID,
-      },
+      parent: { database_id: DATABASE_ID },
       properties: {
         見出し語: {
           title: [{ text: { content: front || "" } }],
         },
-
         意味: {
           rich_text: [{ text: { content: meaning || "" } }],
         },
-
-        備考: {
-          rich_text: [{ text: { content: note || "" } }],
-        },
-
-        読みがな: {
-          rich_text: [{ text: { content: reading || "" } }],
-        },
-
-        性質: {
-          multi_select: (type || "")
-            .split(",")
-            .filter(Boolean)
-            .map((v) => ({ name: v.trim() })),
-        },
-
-        ジャンル: {
-          multi_select: (genre || "")
-            .split(",")
-            .filter(Boolean)
-            .map((v) => ({ name: v.trim() })),
-        },
-
-        参考文献: {
-          url: source && source.startsWith("http") ? source : null,
-        },
-
         関連語: {
           relation: relatedRelation,
         },
       },
     });
 
-    console.log("追加成功！");
     res.json({ message: "追加成功" });
-
   } catch (err) {
     console.error("POSTエラー:", err);
     res.status(500).send("追加失敗");
