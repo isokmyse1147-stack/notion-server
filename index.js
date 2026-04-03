@@ -45,8 +45,8 @@ app.get("/cards", async (req, res) => {
         }
 
         return {
-          id: page.id,
-          notionUrl: page.url, // 🔥重要
+          id: page.id, // ⭐絶対これ使う
+          notionUrl: page.url,
 
           front: props["見出し語"]?.title?.[0]?.plain_text || "",
           meaning: props["意味"]?.rich_text?.[0]?.plain_text || "",
@@ -65,10 +65,10 @@ app.get("/cards", async (req, res) => {
       })
     );
 
-    res.json(cards); // ✅OK
+    res.json(cards);
   } catch (err) {
     console.error("GETエラー:", err);
-    res.status(500).json({ error: "GETエラー" }); // 🔥修正
+    res.status(500).json({ error: "GETエラー" });
   }
 });
 
@@ -112,10 +112,10 @@ app.post("/cards", async (req, res) => {
       },
     });
 
-    res.json({ message: "追加成功" }); // ✅OK
+    res.json({ message: "追加成功" });
   } catch (err) {
     console.error("POSTエラー:", err);
-    res.status(500).json({ error: "追加失敗" }); // 🔥修正
+    res.status(500).json({ error: "追加失敗" });
   }
 });
 
